@@ -34,7 +34,6 @@ func set_texture_and_image_sizes(tile_size:Vector2i, count_x:int, count_y:int) -
     m_image_texture = ImageTexture.create_from_image(m_image)
     set_size(texture_size)
 
-
 func get_tile_entropy(tile_x:int, tile_y:int) -> int:
     if m_entropy_2darray == null:
         return -1
@@ -43,8 +42,10 @@ func get_tile_entropy(tile_x:int, tile_y:int) -> int:
 func set_tile(tile_x:int, tile_y:int, tile:Image, entropy:int) -> void:
 
     if m_entropy_2darray == null:
+        print ("Warning: m_entropy_2darray is not ready")
         return
     if m_image_texture == null:
+        print ("Warning: m_image_texture is not ready")
         return
 
     m_entropy_2darray[tile_x][tile_y] = entropy
@@ -53,27 +54,18 @@ func set_tile(tile_x:int, tile_y:int, tile:Image, entropy:int) -> void:
     var y:int = tile_y * tile.get_height()
 
     m_image.blit_rect(tile, Rect2(0, 0, tile.get_width(), tile.get_height()), Vector2(x, y))
-    #print ("Tile Size: %s" % str(tile.get_size()))
-    # if the entropy is not 0, then we need to draw a tile with the entropy value on it
-    #if entropy != 0:
-    #    m_image.draw_string(m_font, Vector2(x + float(tile_x) / 2, y + float(tile_y) / 2), str(entropy), HORIZONTAL_ALIGNMENT_CENTER, -1, m_font_size, Color(1, 1, 1, 1))
-
-    #m_image.draw_string(m_font, Vector2(10, 10), "TEST", HORIZONTAL_ALIGNMENT_CENTER, -1, m_font_size, Color(1, 1, 1, 1)
-
     m_image_texture.set_image(m_image)
-
-
-# Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(_delta):
-    if m_image_texture == null:
-        return
+    queue_redraw()
 
 func _draw():
     if m_image_texture != null:
         draw_texture(m_image_texture, Vector2(0, 0))
         for i in range(m_entropy_2darray.size()):
             for j in range(m_entropy_2darray[i].size()):
-                if m_entropy_2darray[i][j] != 0:
-                    draw_string(m_font, Vector2(i * m_tile_size.x + m_tile_size.x / 2, j * m_tile_size.y + m_tile_size.y / 2), str(m_entropy_2darray[i][j]), HORIZONTAL_ALIGNMENT_CENTER, -1, m_font_size, Color(1, 1, 1, 1))
-        #draw_rect(Rect2(0, 0, get_size().x, get_size().y), Color(1, 1, 1, 1), false)
 
+                var entropy = m_entropy_2darray[i][j]
+                print ("Entropy: %d" % entropy)
+                if entropy != 1:
+                    #print ("Entropy: %d" % entropy)
+                    var pos = Vector2(i * m_tile_size.x + float(m_tile_size.x) / 2, j * m_tile_size.y + float(m_tile_size.y) / 2)
+                    draw_string(m_font, pos, str(entropy), HORIZONTAL_ALIGNMENT_CENTER, -1, m_font_size, Color(1, 1, 1, 1))

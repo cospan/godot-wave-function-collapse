@@ -38,6 +38,7 @@ enum SocketType {
 
 var WILD_SOCKET = SocketType.WILD
 var COLLAPSED_SOCKETS = [SocketType.BLANK, SocketType.PATH]
+var MAX_ENTROPY = 0
 
 var m_wfc_image_viewer = null
 var m_wfc_tile_grid_view = null
@@ -48,7 +49,6 @@ var m_tile_map = null
 var m_entropy_dict = Dictionary()
 var m_finished = false
 var m_priority_tile_pos = null
-var MAX_ENTROPY = 0
 
 
 # Called when the node enters the scene tree for the first time.
@@ -66,6 +66,12 @@ func _ready():
     m_wfc_tile_grid_view.configure_grid(TILE_COUNT_WIDTH, TILE_COUNT_HEIGHT)
     wfc_init()
 
+# Called every frame. 'delta' is the elapsed time since the previous frame.
+func _process(_delta):
+    if m_finished == false:
+        wfc_step()
+
+# Entropy Dictionary Functions
 func add_tile_pos_to_entropy_dict(entropy:int, pos:Vector2i):
     if m_entropy_dict.has(entropy) == false:
         m_entropy_dict[entropy] = Array()
@@ -96,7 +102,6 @@ func update_entropy_dict(pos:Vector2i, current_entropy:int, new_entropy:int):
         m_entropy_dict[new_entropy] = Array()
     m_entropy_dict[new_entropy].append(pos)
 
-
 func wfc_init():
     # Get the starting position
     # Initialize Tile Map 2D Array
@@ -106,22 +111,19 @@ func wfc_init():
         m_tile_map[i] = Array()
         m_tile_map[i].resize(TILE_COUNT_HEIGHT)
         for j in range(m_tile_map[i].size()):
-            m_tile_map[i][j] = {"type": "EMPTY", "entropy": MAX_ENTROPY}
+            # XXX Do I need the 'collapsed' flag?  I think I can just check entropy to see if it is '1'
+            m_tile_map[i][j] = {"type": "EMPTY", "entropy": MAX_ENTROPY, "collapsed": false}
             add_tile_pos_to_entropy_dict(MAX_ENTROPY, Vector2i(i, j))
-
-
     # Populate the tile map with empty tiles
-
     update_all_wfc_tiles()
 
     # Pick a random tile to start with
     m_priority_tile_pos = Vector2i(randi_range(0, (TILE_COUNT_WIDTH - 1)), randi_range(0, (TILE_COUNT_HEIGHT - 1)))
     m_finished = false
 
-
 func wfc_step():
 
-    # Check if the user requested a tile to be placed over teh entropy rules
+    # Check if the user requested a tile to be placed over the entropy rules
     var m_tile_pos = m_priority_tile_pos
     m_priority_tile_pos = null
 
@@ -147,7 +149,7 @@ func wfc_step():
     var rand_tile_name = valid_tiles[randi_range(0, valid_tiles.size() - 1)]
     #var rand_tile_name = TileType.keys()[rand_tile]
     #var rand_tile_name = TileType.values()[rand_tile]
-    m_tile_map[m_tile_pos.x][m_tile_pos.y] = {"type":  rand_tile_name, "entropy": 0}
+    m_tile_map[m_tile_pos.x][m_tile_pos.y] = {"type":  rand_tile_name, "entropy": 1, "collapsed": true}
 
     # Propagate the entropy until it is stable
     propagate_entropy(m_tile_pos)
@@ -163,7 +165,7 @@ func propagate_entropy(pos:Vector2i):
     for tile_pos in adjacent_tile_positions:
         # Get the entropy of the current tile
         var current_entropy = m_tile_map[tile_pos.x][tile_pos.y]["entropy"]
-        if current_entropy == 0:
+        if m_tile_map[tile_pos.x][tile_pos.y]["collapsed"] == true:
             continue
 
         var new_entropy = get_entropy(tile_pos)
@@ -194,30 +196,39 @@ func update_all_wfc_tiles():
     for i in range(TILE_COUNT_WIDTH):
         for j in range(TILE_COUNT_HEIGHT):
             var tile_name = m_tile_map[i][j]["type"]
-            var tile_entropy = m_wfc_image_viewer.get_tile_entropy(i, j)
-            if tile_entropy != m_tile_map[i][j]["entropy"]:
+            var model_entropy = m_tile_map[i][j]["entropy"]
+            var view_entropy = m_wfc_image_viewer.get_tile_entropy(i, j)
+            #var tile_entropy = m_wfc_image_viewer.get_tile_entropy(i, j)
+            if view_entropy != model_entropy:
+                #print ("Updating Tile to new entropy: %s" % str([i, j, tile_name, view_entropy, model_entropy]))
                 # We should update
-                m_wfc_image_viewer.set_tile(i, j, m_texture_dict[tile_name]["image"], m_tile_map[i][j]["entropy"])
-                #m_wfc_image_viewer.set_tile(i, j, m_texture_dict["STRAIGHT"]["image"], 0)
+                m_wfc_image_viewer.set_tile(i, j, m_texture_dict[tile_name]["image"], model_entropy)
 
 func get_adjacent_positions(tile_pos:Vector2i) -> Array:
     var tile_pos_x = tile_pos.x
     var tile_pos_y = tile_pos.y
     var adjacent_positions = Array()
-    adjacent_positions.append(Vector2i(tile_pos_x - 1, tile_pos_y))
-    adjacent_positions.append(Vector2i(tile_pos_x + 1, tile_pos_y))
-    adjacent_positions.append(Vector2i(tile_pos_x, tile_pos_y - 1))
-    adjacent_positions.append(Vector2i(tile_pos_x, tile_pos_y + 1))
 
-    # Make sure that the adjacent positions are within the bounds of the tile map
-    var remove_list = Array()
-    for i in range(adjacent_positions.size()):
-        if adjacent_positions[i].x < 0 or adjacent_positions[i].x >= TILE_COUNT_WIDTH \
-        or adjacent_positions[i].y < 0 or adjacent_positions[i].y >= TILE_COUNT_HEIGHT:
-            remove_list.append(adjacent_positions[i])
+    # Do not add adjacent positions that are outside the bounds of the tile map
+    if tile_pos_x > 0:
+        adjacent_positions.append(Vector2i(tile_pos_x - 1, tile_pos_y))
+    if tile_pos_x < TILE_COUNT_WIDTH - 1:
+        adjacent_positions.append(Vector2i(tile_pos_x + 1, tile_pos_y))
+    if tile_pos_y > 0:
+        adjacent_positions.append(Vector2i(tile_pos_x, tile_pos_y - 1))
+    if tile_pos_y < TILE_COUNT_HEIGHT - 1:
+        adjacent_positions.append(Vector2i(tile_pos_x, tile_pos_y + 1))
 
-    for i in range(remove_list.size()):
-        adjacent_positions.erase(remove_list[i])
+    # XXX Below is a more general way to do this, but it is slower
+    ## Make sure that the adjacent positions are within the bounds of the tile map
+    #var remove_list = Array()
+    #for i in range(adjacent_positions.size()):
+    #    if adjacent_positions[i].x < 0 or adjacent_positions[i].x >= TILE_COUNT_WIDTH \
+    #    or adjacent_positions[i].y < 0 or adjacent_positions[i].y >= TILE_COUNT_HEIGHT:
+    #        remove_list.append(adjacent_positions[i])
+
+    #for i in range(remove_list.size()):
+    #    adjacent_positions.erase(remove_list[i])
 
     return adjacent_positions
 
@@ -259,12 +270,6 @@ func get_valid_tiles_from_sockets(sockets:Array) -> Array:
             if s != m_texture_dict[tile_type]["sockets"][i]:
                 valid_tile_types.erase(tile_type)
     return valid_tile_types
-
-# Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(_delta):
-    if m_finished == false:
-        wfc_step()
-    pass
 
 
 func create_texture_dictionary() -> Dictionary:
