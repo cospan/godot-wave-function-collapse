@@ -27,7 +27,10 @@ enum TileType {
     T_180,
     T_270,
     CROSS,
-    END
+    END,
+    END_90,
+    END_180,
+    END_270
 }
 
 enum SocketType {
@@ -146,10 +149,9 @@ func wfc_step():
         assert(false, "Contradiction at %s" % m_tile_pos)
 
     # Collapse the tile to a single type (Pick a random tile from the list of valid tiles)
-    var rand_tile_name = valid_tiles[randi_range(0, valid_tiles.size() - 1)]
-    #var rand_tile_name = TileType.keys()[rand_tile]
-    #var rand_tile_name = TileType.values()[rand_tile]
-    m_tile_map[m_tile_pos.x][m_tile_pos.y] = {"type":  rand_tile_name, "entropy": 1, "collapsed": true}
+    var collapsed_tile_name = apply_soft_constraints(valid_tiles)
+    #var collapsed_tile_name = valid_tiles[randi_range(0, valid_tiles.size() - 1)]
+    m_tile_map[m_tile_pos.x][m_tile_pos.y] = {"type":  collapsed_tile_name, "entropy": 1, "collapsed": true}
 
     # Propagate the entropy until it is stable
     propagate_entropy(m_tile_pos)
@@ -203,6 +205,54 @@ func update_all_wfc_tiles():
                 #print ("Updating Tile to new entropy: %s" % str([i, j, tile_name, view_entropy, model_entropy]))
                 # We should update
                 m_wfc_image_viewer.set_tile(i, j, m_texture_dict[tile_name]["image"], model_entropy)
+
+func apply_soft_constraints(tiles:Array):
+    # We have a list of tiles, we need to apply the soft constraints to them
+
+    # First check if there are any tiles that have more than one path socket
+    # If there are then we need to pick one of those tiles
+    var path_tiles = Array()
+    for tile in tiles:
+        var sockets = m_texture_dict[tile]["sockets"]
+        var path_count = 0
+        for socket in sockets:
+            if socket == SocketType.PATH:
+                path_count += 1
+        if path_count > 1:
+            path_tiles.append(tile)
+
+    if len(path_tiles) > 0:
+        tiles = path_tiles
+
+    var weighted_tiles = Array()
+    for tile in tiles:
+        var sockets = m_texture_dict[tile]["sockets"]
+        var weight = 1 # Need this or there will never be any blank tiles
+        for socket in sockets:
+            if socket == SocketType.PATH:
+                weight += 1
+        weighted_tiles.append(weight)
+
+    var collapsed_tile = tiles[weighted_random_select(weighted_tiles)]
+    print ("Tiles: %s" % str(tiles, weighted_tiles, collapsed_tile))
+
+    return collapsed_tile
+
+
+func weighted_random_select(weights:Array) -> int:
+    # We have an array of weights, we need to pick a random index based on the weights
+    # We can do this by creating a cumulative sum array and then picking a random number between 0 and the sum
+    # Then we can find the index of the cumulative sum array that is greater than the random number
+    var cumulative_sum = Array()
+    var sum = 0
+    for i in range(weights.size()):
+        sum += weights[i]
+        cumulative_sum.append(sum)
+    var rand = randf_range(0, sum)
+    for i in range(cumulative_sum.size()):
+        if rand < cumulative_sum[i]:
+            return i
+    return cumulative_sum.size() - 1
 
 func get_adjacent_positions(tile_pos:Vector2i) -> Array:
     var tile_pos_x = tile_pos.x
@@ -287,29 +337,29 @@ func create_texture_dictionary() -> Dictionary:
                 var image = texture_nothing.get_image()
                 image.convert(Image.FORMAT_RGBA8)
                 texture_dict[key]["image"] = image
-                texture_dict[key]["sockets"] = [SocketType.PATH, SocketType.PATH, SocketType.PATH, SocketType.PATH]
+                texture_dict[key]["sockets"] = [SocketType.BLANK, SocketType.BLANK, SocketType.BLANK, SocketType.BLANK]
             "STRAIGHT":
                 var image = texture_straight.get_image()
                 image.convert(Image.FORMAT_RGBA8)
                 texture_dict[key]["image"] = image
-                texture_dict[key]["sockets"] = [SocketType.PATH, SocketType.BLANK,  SocketType.PATH, SocketType.BLANK]
+                texture_dict[key]["sockets"] = [SocketType.BLANK, SocketType.PATH,  SocketType.BLANK, SocketType.PATH]
             "STRAIGHT_90":
                 var image = texture_straight.get_image()
                 image.convert(Image.FORMAT_RGBA8)
                 image.rotate_90(CLOCKWISE)
                 texture_dict[key]["image"] = image
-                texture_dict[key]["sockets"] = [SocketType.BLANK,  SocketType.PATH, SocketType.BLANK,  SocketType.PATH]
+                texture_dict[key]["sockets"] = [SocketType.PATH,  SocketType.BLANK, SocketType.PATH,  SocketType.BLANK]
             "TURN":
                 var image = texture_turn.get_image()
                 image.convert(Image.FORMAT_RGBA8)
                 texture_dict[key]["image"] = image
-                texture_dict[key]["sockets"] = [SocketType.PATH, SocketType.BLANK,  SocketType.BLANK,  SocketType.PATH]
+                texture_dict[key]["sockets"] = [SocketType.BLANK, SocketType.PATH,  SocketType.PATH,  SocketType.BLANK]
             "TURN_90":
                 var image = texture_turn.get_image()
                 image.convert(Image.FORMAT_RGBA8)
                 image.rotate_90(CLOCKWISE)
                 texture_dict[key]["image"] = image
-                texture_dict[key]["sockets"] = [SocketType.BLANK,  SocketType.PATH, SocketType.PATH, SocketType.BLANK]
+                texture_dict[key]["sockets"] = [SocketType.BLANK,  SocketType.BLANK, SocketType.PATH, SocketType.PATH]
             "TURN_180":
                 var image = texture_turn.get_image()
                 image.convert(Image.FORMAT_RGBA8)
@@ -321,40 +371,58 @@ func create_texture_dictionary() -> Dictionary:
                 image.convert(Image.FORMAT_RGBA8)
                 image.rotate_90(COUNTERCLOCKWISE)
                 texture_dict[key]["image"] = image
-                texture_dict[key]["sockets"] = [SocketType.BLANK,  SocketType.PATH, SocketType.PATH, SocketType.BLANK]
+                texture_dict[key]["sockets"] = [SocketType.PATH,  SocketType.PATH, SocketType.BLANK, SocketType.BLANK]
             "T":
                 var image = texture_t.get_image()
                 image.convert(Image.FORMAT_RGBA8)
                 texture_dict[key]["image"] = image
-                texture_dict[key]["sockets"] = [SocketType.BLANK,  SocketType.BLANK,  SocketType.BLANK,  SocketType.PATH]
+                texture_dict[key]["sockets"] = [SocketType.PATH,  SocketType.PATH,  SocketType.PATH,  SocketType.BLANK]
             "T_90":
                 var image = texture_t.get_image()
                 image.convert(Image.FORMAT_RGBA8)
                 image.rotate_90(CLOCKWISE)
                 texture_dict[key]["image"] = image
-                texture_dict[key]["sockets"] = [SocketType.PATH, SocketType.BLANK,  SocketType.BLANK,  SocketType.BLANK]
+                texture_dict[key]["sockets"] = [SocketType.BLANK, SocketType.PATH,  SocketType.PATH,  SocketType.PATH]
             "T_180":
                 var image = texture_t.get_image()
                 image.convert(Image.FORMAT_RGBA8)
                 image.rotate_180()
                 texture_dict[key]["image"] = image
-                texture_dict[key]["sockets"] = [SocketType.BLANK,  SocketType.BLANK,  SocketType.BLANK,  SocketType.PATH]
+                texture_dict[key]["sockets"] = [SocketType.PATH,  SocketType.BLANK,  SocketType.PATH,  SocketType.PATH]
             "T_270":
                 var image = texture_t.get_image()
                 image.convert(Image.FORMAT_RGBA8)
                 image.rotate_90(COUNTERCLOCKWISE)
                 texture_dict[key]["image"] = image
-                texture_dict[key]["sockets"] = [SocketType.PATH, SocketType.BLANK,  SocketType.BLANK,  SocketType.BLANK]
+                texture_dict[key]["sockets"] = [SocketType.PATH, SocketType.PATH,  SocketType.BLANK,  SocketType.PATH]
             "CROSS":
                 var image = texture_cross.get_image()
                 image.convert(Image.FORMAT_RGBA8)
                 texture_dict[key]["image"] = image
-                texture_dict[key]["sockets"] = [SocketType.BLANK,  SocketType.BLANK,  SocketType.BLANK,  SocketType.BLANK]
+                texture_dict[key]["sockets"] = [SocketType.PATH,  SocketType.PATH,  SocketType.PATH,  SocketType.PATH]
             "END":
                 var image = texture_end.get_image()
                 image.convert(Image.FORMAT_RGBA8)
                 texture_dict[key]["image"] = image
-                texture_dict[key]["sockets"] = [SocketType.PATH, SocketType.BLANK,  SocketType.PATH, SocketType.PATH]
+                texture_dict[key]["sockets"] = [SocketType.BLANK, SocketType.PATH,  SocketType.BLANK, SocketType.BLANK]
+            "END_90":
+                var image = texture_end.get_image()
+                image.convert(Image.FORMAT_RGBA8)
+                image.rotate_90(CLOCKWISE)
+                texture_dict[key]["image"] = image
+                texture_dict[key]["sockets"] = [SocketType.BLANK, SocketType.BLANK, SocketType.PATH,  SocketType.BLANK]
+            "END_180":
+                var image = texture_end.get_image()
+                image.convert(Image.FORMAT_RGBA8)
+                image.rotate_180()
+                texture_dict[key]["image"] = image
+                texture_dict[key]["sockets"] = [SocketType.BLANK,  SocketType.BLANK, SocketType.PATH, SocketType.BLANK]
+            "END_270":
+                var image = texture_end.get_image()
+                image.convert(Image.FORMAT_RGBA8)
+                image.rotate_90(COUNTERCLOCKWISE)
+                texture_dict[key]["image"] = image
+                texture_dict[key]["sockets"] = [SocketType.PATH, SocketType.BLANK, SocketType.BLANK, SocketType.BLANK]
             _:
                 print ("Unrecognized Tile Type!")
     return texture_dict

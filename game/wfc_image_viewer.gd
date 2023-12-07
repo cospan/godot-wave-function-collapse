@@ -64,7 +64,7 @@ func _draw():
             for j in range(m_entropy_2darray[i].size()):
 
                 var entropy = m_entropy_2darray[i][j]
-                print ("Entropy: %d" % entropy)
+                #print ("Entropy: %d" % entropy)
                 if entropy != 1:
                     #print ("Entropy: %d" % entropy)
                     var pos = Vector2(i * m_tile_size.x + float(m_tile_size.x) / 2, j * m_tile_size.y + float(m_tile_size.y) / 2)
