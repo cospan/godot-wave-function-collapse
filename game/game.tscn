@@ -2,8 +2,8 @@
 
 [ext_resource type="Script" path="res://game/game.gd" id="1_dfkgk"]
 [ext_resource type="FontFile" uid="uid://cmp72y0f6o15o" path="res://assets/Roboto-Regular.ttf" id="1_o10vy"]
+[ext_resource type="PackedScene" uid="uid://0vlarwbx5s1u" path="res://wfc/wfc.tscn" id="2_frcnx"]
 [ext_resource type="Script" path="res://game/wfc_image_viewer.gd" id="3_7vixg"]
-[ext_resource type="Script" path="res://game/WFCTileGrid.gd" id="3_q5307"]
 
 [sub_resource type="Theme" id="Theme_hldb1"]
 default_font = ExtResource("1_o10vy")
@@ -22,16 +22,7 @@ size_flags_vertical = 3
 script = ExtResource("1_dfkgk")
 metadata/_edit_use_anchors_ = true
 
-[node name="WFCTileGrid" type="GridContainer" parent="."]
-visible = false
-custom_minimum_size = Vector2(100, 100)
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("3_q5307")
+[node name="WFC" parent="." instance=ExtResource("2_frcnx")]
 
 [node name="wfc_image_viewer" type="Control" parent="."]
 anchors_preset = 0
