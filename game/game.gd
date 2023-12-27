@@ -1,8 +1,16 @@
 extends Control
 
-@export var TILE_COUNT_WIDTH = 10
-@export var TILE_COUNT_HEIGHT = 10
+@export var DEFAULT_TILE_COUNT_WIDTH = 10
+@export var DEFAULT_TILE_COUNT_HEIGHT = 10
+
+@export var MIN_TILE_COUNT_WIDTH = 5
+@export var MIN_TILE_COUNT_HEIGHT = 5
+
+@export var MAX_TILE_COUNT_WIDTH = 20
+@export var MAX_TILE_COUNT_HEIGHT = 20
 @export var ENABLE_EDGE = true
+
+@export var DEFAULT_ENABLE_STEP = true
 
 
 @export var texture_empty = preload("res://assets/wfc_empty.png")
@@ -44,7 +52,6 @@ var COLLAPSED_SOCKETS = [SocketType.BLANK, SocketType.PATH]
 var MAX_ENTROPY = 0
 
 var m_wfc_image_viewer = null
-var m_image_size = Vector2i(0, 0)
 # Create a dictionary of textures, along with their socketss (top, right, bottom, left)
 var m_tile_dict = Dictionary()
 var m_tile_map = null
@@ -53,36 +60,60 @@ var m_processing = true
 var m_finished = false
 var m_priority_tile_pos = null
 var m_wfc = null
+var m_debug_property_view = null
+var m_debug_props = {}
+var m_debug_visualizer = null
 
+var m_step_enabled = DEFAULT_ENABLE_STEP
+var m_step:bool = false
+
+var m_tile_count_width = DEFAULT_TILE_COUNT_WIDTH
+var m_tile_count_height = DEFAULT_TILE_COUNT_HEIGHT
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
     # find the size of an individual tile
-    var tile_size = texture_nothing.get_size()
-    m_tile_dict = create_tile_dictionary()
-    MAX_ENTROPY = len(m_tile_dict.keys()) - 1
-    print ("Size: %s" % tile_size)
-    m_image_size = Vector2i(tile_size.x * TILE_COUNT_WIDTH, tile_size.y * TILE_COUNT_HEIGHT)
-    print ("Image Size: %s" % m_image_size)
-    m_wfc_image_viewer = $wfc_image_viewer
-    m_wfc_image_viewer.set_texture_and_image_sizes(tile_size, TILE_COUNT_WIDTH, TILE_COUNT_HEIGHT)
+    m_debug_property_view = $hbox/DictProperty
+    m_debug_visualizer = $hbox/DebugVisualizer
+    m_wfc_image_viewer = $hbox/wfc_image_viewer
     m_wfc = $WFC
-    #wfc_init()
-    m_wfc.initialize(TILE_COUNT_WIDTH, TILE_COUNT_HEIGHT, 0, m_tile_dict, 0, ENABLE_EDGE, apply_soft_constraints)
+    m_debug_props["start_button"] = {"type": "Button", "name": "Start"}
+    m_debug_props["enable_step"] = {"type": "CheckBox", "value": DEFAULT_ENABLE_STEP, "name": "Enable Step"}
+    m_debug_props["step_button"] = {"type": "Button", "name": "Step"}
+    m_debug_props["enable debug data"] = {"type": "CheckBox", "value": false, "name": "Enable Debug Data"}
+    m_debug_props["tile width count"] = {"type": "HSlider", "min": MIN_TILE_COUNT_WIDTH, "max": MAX_TILE_COUNT_WIDTH, "step": 1, "value": m_tile_count_width, "name": "Tile Width Count"}
+    m_debug_props["tile_width_count_view"] = {"type":"LineEdit", "value": str(m_tile_count_width), "name": "", "readonly": true}
+    m_debug_props["tile height count"] = {"type": "HSlider", "min": MIN_TILE_COUNT_WIDTH, "max": MAX_TILE_COUNT_HEIGHT, "step": 1, "value": m_tile_count_height, "name": "Tile Height Count"}
+    m_debug_props["tile_height_count_view"] = {"type":"LineEdit", "value": str(m_tile_count_height), "name": "", "readonly": true}
+    m_debug_property_view.update_dict(m_debug_props)
+    print ("Debug Property: %s" % str(m_debug_property_view))
+    m_tile_dict = create_tile_dictionary()
+    m_debug_visualizer.initialize(m_tile_dict)
+    MAX_ENTROPY = len(m_tile_dict.keys()) - 1
+    start_wfc()
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(_delta):
-    if m_processing:
-        #wfc_step()
-        m_processing = m_wfc.step()
+    if m_step_enabled:
+        if m_step:
+            m_step = false
+            m_processing = m_wfc.step(m_priority_tile_pos)
+            m_priority_tile_pos = null
+            m_debug_visualizer.update_data(m_wfc.m_dbg_tile_sockets, m_wfc.m_dbg_hard_constraints, [])
+            update_all_wfc_tiles()
+            m_wfc_image_viewer.highlight_neighbors(m_wfc.m_dbg_tile_neighbors)
+            m_wfc_image_viewer.highlight_box(m_wfc.m_dbg_tile_position)
+    elif m_processing:
+        m_processing = m_wfc.step(m_priority_tile_pos)
+        m_priority_tile_pos = null
         update_all_wfc_tiles()
     elif not m_finished:
         m_finished = true
         print ("Finished!")
 
 func update_all_wfc_tiles():
-    for i in range(TILE_COUNT_WIDTH):
-        for j in range(TILE_COUNT_HEIGHT):
+    for i in range(m_tile_count_width):
+        for j in range(m_tile_count_height):
             var tile_name = m_wfc.m_tile_map[i][j]["type"]
             var model_entropy = m_wfc.m_tile_map[i][j]["entropy"]
             var view_entropy = m_wfc_image_viewer.get_tile_entropy(i, j)
@@ -121,7 +152,7 @@ func apply_soft_constraints(tiles:Array):
 
     var collapsed_tile = tiles[weighted_random_select(weighted_tiles)]
     #print ("Tiles: %s" % str(tiles, weighted_tiles, collapsed_tile))
-    print ("Tile: %s" % str(collapsed_tile))
+    #print ("Tile: %s" % str(collapsed_tile))
 
     return collapsed_tile
 
@@ -235,7 +266,7 @@ func create_tile_dictionary() -> Dictionary:
                 image.convert(Image.FORMAT_RGBA8)
                 image.rotate_180()
                 tile_dict[key]["image"] = image
-                tile_dict[key]["sockets"] = [SocketType.BLANK,  SocketType.BLANK, SocketType.PATH, SocketType.BLANK]
+                tile_dict[key]["sockets"] = [SocketType.BLANK,  SocketType.BLANK, SocketType.BLANK, SocketType.PATH]
             "END_270":
                 var image = texture_end.get_image()
                 image.convert(Image.FORMAT_RGBA8)
@@ -245,3 +276,40 @@ func create_tile_dictionary() -> Dictionary:
             _:
                 print ("Unrecognized Tile Type!")
     return tile_dict
+
+func _on_dict_property_property_changed(property_name, property_value):
+    match (property_name):
+        "start_button":
+            print ("Start!")
+            start_wfc()
+        "enable_step":
+            m_step_enabled = property_value
+        "step_button":
+            m_step = true
+        "enable debug data":
+            m_debug_visualizer.set_visible(property_value)
+            #m_wfc_image_viewer.enable_shrink(property_value)
+        "tile width count":
+            m_tile_count_width = property_value
+            m_debug_property_view.set_value("tile_width_count_view", str(m_tile_count_width))
+        "tile height count":
+            m_tile_count_height = property_value
+            m_debug_property_view.set_value("tile_height_count_view", str(m_tile_count_height))
+        _:
+            pass
+
+func start_wfc():
+    m_processing = true
+    m_finished = false
+    m_wfc_image_viewer.set_texture_and_image_sizes(texture_nothing.get_size(), m_tile_count_width, m_tile_count_height)
+    m_priority_tile_pos = Vector2i(randi_range(0, (m_tile_count_width - 1)), randi_range(0, (m_tile_count_height - 1)))
+    m_wfc.initialize(m_tile_count_width, m_tile_count_height, 0, m_tile_dict, 0, ENABLE_EDGE, apply_soft_constraints)
+    m_debug_visualizer.clear()
+    update_all_wfc_tiles()
+    #m_wfc_image_viewer.highlight_neighbors(m_wfc.m_dbg_tile_neighbors)
+    #m_wfc_image_viewer.highlight_box(m_wfc.m_dbg_tile_position)
+
+
+func _on_wfc_image_viewer_tile_selected(pos):
+    m_priority_tile_pos = pos
+    m_step = true

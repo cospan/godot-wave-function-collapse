@@ -1,9 +1,11 @@
-[gd_scene load_steps=6 format=3 uid="uid://djt4sd51v0354"]
+[gd_scene load_steps=8 format=3 uid="uid://djt4sd51v0354"]
 
 [ext_resource type="Script" path="res://game/game.gd" id="1_dfkgk"]
-[ext_resource type="FontFile" uid="uid://cmp72y0f6o15o" path="res://assets/Roboto-Regular.ttf" id="1_o10vy"]
+[ext_resource type="FontFile" uid="uid://bqnmihjynmrmv" path="res://assets/Roboto-Regular.ttf" id="1_o10vy"]
 [ext_resource type="PackedScene" uid="uid://0vlarwbx5s1u" path="res://wfc/wfc.tscn" id="2_frcnx"]
+[ext_resource type="PackedScene" uid="uid://c8lvx7ngljfpt" path="res://utils/DictProperty.tscn" id="2_las2g"]
 [ext_resource type="Script" path="res://game/wfc_image_viewer.gd" id="3_7vixg"]
+[ext_resource type="Script" path="res://game/DebugVisualizer.gd" id="5_tp4c3"]
 
 [sub_resource type="Theme" id="Theme_hldb1"]
 default_font = ExtResource("1_o10vy")
@@ -20,13 +22,91 @@ grow_vertical = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("1_dfkgk")
-metadata/_edit_use_anchors_ = true
+
+[node name="hbox" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="DictProperty" parent="hbox" instance=ExtResource("2_las2g")]
+layout_mode = 2
+size_flags_vertical = 0
+
+[node name="DebugVisualizer" type="VBoxContainer" parent="hbox"]
+visible = false
+clip_contents = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+script = ExtResource("5_tp4c3")
+
+[node name="Label" type="Label" parent="hbox/DebugVisualizer"]
+layout_mode = 2
+text = "Sockets"
+
+[node name="GridContainerSocket" type="GridContainer" parent="hbox/DebugVisualizer"]
+layout_mode = 2
+columns = 2
+
+[node name="LabelTop" type="Label" parent="hbox/DebugVisualizer/GridContainerSocket"]
+layout_mode = 2
+text = "Top"
+
+[node name="LabelTopValue" type="Label" parent="hbox/DebugVisualizer/GridContainerSocket"]
+layout_mode = 2
+text = "---"
+
+[node name="LabelRight" type="Label" parent="hbox/DebugVisualizer/GridContainerSocket"]
+layout_mode = 2
+text = "Right"
+
+[node name="LabelRightValue" type="Label" parent="hbox/DebugVisualizer/GridContainerSocket"]
+layout_mode = 2
+text = "---"
+
+[node name="LabelBottom" type="Label" parent="hbox/DebugVisualizer/GridContainerSocket"]
+layout_mode = 2
+text = "Bottom
+"
+
+[node name="LabelBottomValue" type="Label" parent="hbox/DebugVisualizer/GridContainerSocket"]
+layout_mode = 2
+text = "---"
+
+[node name="LabelLeft" type="Label" parent="hbox/DebugVisualizer/GridContainerSocket"]
+layout_mode = 2
+text = "Left"
+
+[node name="LabelLeftValue" type="Label" parent="hbox/DebugVisualizer/GridContainerSocket"]
+layout_mode = 2
+text = "---
+"
+
+[node name="Label2" type="Label" parent="hbox/DebugVisualizer"]
+layout_mode = 2
+text = "Hard Constraints"
+
+[node name="GridContainerHard" type="GridContainer" parent="hbox/DebugVisualizer"]
+layout_mode = 2
+columns = 2
+
+[node name="Label3" type="Label" parent="hbox/DebugVisualizer"]
+layout_mode = 2
+text = "Soft Constraints"
+
+[node name="GridContainerSoft" type="GridContainer" parent="hbox/DebugVisualizer"]
+layout_mode = 2
+columns = 3
+
+[node name="wfc_image_viewer" type="Control" parent="hbox"]
+layout_mode = 2
+theme = SubResource("Theme_hldb1")
+script = ExtResource("3_7vixg")
 
 [node name="WFC" parent="." instance=ExtResource("2_frcnx")]
 
-[node name="wfc_image_viewer" type="Control" parent="."]
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
-theme = SubResource("Theme_hldb1")
-script = ExtResource("3_7vixg")
+[connection signal="property_changed" from="hbox/DictProperty" to="." method="_on_dict_property_property_changed"]
+[connection signal="gui_input" from="hbox/wfc_image_viewer" to="hbox/wfc_image_viewer" method="_on_gui_input"]
+[connection signal="tile_selected" from="hbox/wfc_image_viewer" to="." method="_on_wfc_image_viewer_tile_selected"]
