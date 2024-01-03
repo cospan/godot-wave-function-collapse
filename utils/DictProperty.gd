@@ -19,27 +19,28 @@ func update_dict(property_dict = {}):
 
     for key in property_dict:
         var label = Label.new()
+        var prop
         label.text = property_dict[key]["name"]
         add_child(label)
         match property_dict[key]["type"]:
             "Button":
                 #print ("Button")
                 label.text = ""
-                var prop = Button.new()
+                prop = Button.new()
                 prop.text = property_dict[key]["name"]
                 add_child(prop)
                 m_widget_dict[key] = {"type": property_dict[key]["type"], "label": label, "widget": prop}
                 prop.connect("pressed", func() : _property_update(key, true))
             "CheckBox":
                 #print ("BOOL")
-                var prop = CheckBox.new()
+                prop = CheckBox.new()
                 prop.button_pressed = property_dict[key]["value"]
                 add_child(prop)
                 m_widget_dict[key] = {"type": property_dict[key]["type"], "label": label, "widget": prop}
                 prop.connect("pressed", func() : _property_update(key, prop.button_pressed))
             "OptionButton":
                 #print ("OPTION")
-                var prop = OptionButton.new()
+                prop = OptionButton.new()
                 for option in property_dict[key]["options"]:
                     prop.add_item(option)
                 prop.selected = property_dict[key]["value"]
@@ -60,7 +61,7 @@ func update_dict(property_dict = {}):
 
             "HSlider":
                 #print("FLOAT")
-                var prop = HSlider.new()
+                prop = HSlider.new()
                 prop.custom_minimum_size = Vector2(200, 0) # Set minimum size
                 prop.min_value = property_dict[key]["min"]
                 prop.max_value = property_dict[key]["max"]
@@ -74,7 +75,7 @@ func update_dict(property_dict = {}):
                 prop.connect("value_changed", func(_val) : _property_update(key, _val))
             "LineEdit":
                 #print("STRING")
-                var prop = LineEdit.new()
+                prop = LineEdit.new()
                 prop.text = property_dict[key]["value"]
                 if "readonly" in property_dict[key]:
                     prop.editable = !property_dict[key]["readonly"]
@@ -82,6 +83,46 @@ func update_dict(property_dict = {}):
                 add_child(prop)
                 m_widget_dict[key] = {"type": property_dict[key]["type"], "label": label, "widget": prop}
                 prop.connect("text_submitted", func(_val) : _property_update(key, _val))
+            "Label":
+                prop = Label.new()
+                prop.text = property_dict[key]["value"]
+                add_child(prop)
+                m_widget_dict[key] = {"type": property_dict[key]["type"], "label": label, "widget": prop}
+            "ItemList":
+                prop = ItemList.new()
+                prop.auto_height = true
+                if "items" in property_dict[key]:
+                    for item in property_dict[key]["items"]:
+                        if item is Array:
+                            var sub_texture = Texture2D
+                            var sub_string = ""
+                            var sub_select = false
+                            for sub_item in item:
+                                if sub_item is String:
+                                    sub_string = sub_item
+                                if sub_item is Texture2D:
+                                    sub_texture = sub_item
+                                if sub_item is bool:
+                                    sub_select = sub_item
+
+                            prop.add_item(sub_string, sub_texture, sub_select)
+                        elif item is String:
+                            prop.add_item(item)
+                        elif item is Texture2D:
+                            prop.add_item("", item)
+
+                add_child(prop)
+                m_widget_dict[key] = {"type": property_dict[key]["type"], "label": label, "widget": prop}
+            _:
+                print ("Unknown Property: %s" % key["type"])
+
+
+        if property_dict[key].has("visible"):
+            label.visible = property_dict[key]["visible"]
+            if prop:
+                prop.visible = property_dict[key]["visible"]
+
+
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
@@ -89,6 +130,14 @@ func _ready():
 
 func set_label(n, text):
     m_widget_dict[n]["label"].text = text
+
+func set_prop_visible(n, enable:bool):
+    if !m_widget_dict.has(n):
+        print ("No such property: %s" % n)
+        return 
+
+    m_widget_dict[n]["label"].visible = enable
+    m_widget_dict[n]["widget"].visible = enable
 
 func set_value(n, value):
     if !m_widget_dict.has(n):
@@ -121,6 +170,8 @@ func set_value(n, value):
             m_widget_dict[n]["widget"].text = value
         "OptionButton":
             m_widget_dict[n]["widget"].selected = value
+        "Label":
+            m_widget_dict[n]["widget"].text = value
 
 func _property_update(property_name, property_value):
     property_changed.emit(property_name, property_value)

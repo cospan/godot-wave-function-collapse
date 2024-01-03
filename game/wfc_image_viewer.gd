@@ -110,6 +110,8 @@ func _draw():
             var pos = Vector2(m_highlight_pos.x * m_tile_size.x, m_highlight_pos.y * m_tile_size.y)
             draw_rect(Rect2(pos, Vector2(m_tile_size.x, m_tile_size.y)), Color(1, 0, 0, 0.5))
 
+        #get_global_rect()
+
 
 func _on_gui_input(event:InputEvent):
     var pos = Vector2i(-1, -1)
@@ -121,6 +123,9 @@ func _on_gui_input(event:InputEvent):
           pos.y = (event.position.y / m_tile_size.y) * m_scale.y
           print ("pos: ", pos)
           emit_signal("tile_selected", pos)
+
+        print ("Global Rects: %s" % str(get_global_rect()))
+        #print ("Full Screen Size: %s" % str(get_))
 
 
 

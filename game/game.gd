@@ -62,7 +62,6 @@ var m_priority_tile_pos = null
 var m_wfc = null
 var m_debug_property_view = null
 var m_debug_props = {}
-var m_debug_visualizer = null
 
 var m_step_enabled = DEFAULT_ENABLE_STEP
 var m_step:bool = false
@@ -74,21 +73,21 @@ var m_tile_count_height = DEFAULT_TILE_COUNT_HEIGHT
 func _ready():
     # find the size of an individual tile
     m_debug_property_view = $hbox/DictProperty
-    m_debug_visualizer = $hbox/DebugVisualizer
     m_wfc_image_viewer = $hbox/wfc_image_viewer
     m_wfc = $WFC
     m_debug_props["start_button"] = {"type": "Button", "name": "Start"}
     m_debug_props["enable_step"] = {"type": "CheckBox", "value": DEFAULT_ENABLE_STEP, "name": "Enable Step"}
     m_debug_props["step_button"] = {"type": "Button", "name": "Step"}
     m_debug_props["enable debug data"] = {"type": "CheckBox", "value": false, "name": "Enable Debug Data"}
-    m_debug_props["tile width count"] = {"type": "HSlider", "min": MIN_TILE_COUNT_WIDTH, "max": MAX_TILE_COUNT_WIDTH, "step": 1, "value": m_tile_count_width, "name": "Tile Width Count"}
-    m_debug_props["tile_width_count_view"] = {"type":"LineEdit", "value": str(m_tile_count_width), "name": "", "readonly": true}
-    m_debug_props["tile height count"] = {"type": "HSlider", "min": MIN_TILE_COUNT_WIDTH, "max": MAX_TILE_COUNT_HEIGHT, "step": 1, "value": m_tile_count_height, "name": "Tile Height Count"}
-    m_debug_props["tile_height_count_view"] = {"type":"LineEdit", "value": str(m_tile_count_height), "name": "", "readonly": true}
+    m_debug_props["current_ports"] = {"type": "Label", "name":"Current Ports", "value":"XXXX", "visible": false}
+    m_debug_props["possible_tiles"] = {"type": "ItemList", "name":"Possible Tiles", "items":["test1", "test2"]}
+    #m_debug_props["tile width count"] = {"type": "HSlider", "min": MIN_TILE_COUNT_WIDTH, "max": MAX_TILE_COUNT_WIDTH, "step": 1, "value": m_tile_count_width, "name": "Tile Width Count"}
+    #m_debug_props["tile_width_count_view"] = {"type":"LineEdit", "value": str(m_tile_count_width), "name": "", "readonly": true}
+    #m_debug_props["tile height count"] = {"type": "HSlider", "min": MIN_TILE_COUNT_WIDTH, "max": MAX_TILE_COUNT_HEIGHT, "step": 1, "value": m_tile_count_height, "name": "Tile Height Count"}
+    #m_debug_props["tile_height_count_view"] = {"type":"LineEdit", "value": str(m_tile_count_height), "name": "", "readonly": true}
     m_debug_property_view.update_dict(m_debug_props)
     print ("Debug Property: %s" % str(m_debug_property_view))
     m_tile_dict = create_tile_dictionary()
-    m_debug_visualizer.initialize(m_tile_dict)
     MAX_ENTROPY = len(m_tile_dict.keys()) - 1
     start_wfc()
 
@@ -99,7 +98,6 @@ func _process(_delta):
             m_step = false
             m_processing = m_wfc.step(m_priority_tile_pos)
             m_priority_tile_pos = null
-            m_debug_visualizer.update_data(m_wfc.m_dbg_tile_sockets, m_wfc.m_dbg_hard_constraints, [])
             update_all_wfc_tiles()
             m_wfc_image_viewer.highlight_neighbors(m_wfc.m_dbg_tile_neighbors)
             m_wfc_image_viewer.highlight_box(m_wfc.m_dbg_tile_position)
@@ -110,6 +108,9 @@ func _process(_delta):
     elif not m_finished:
         m_finished = true
         print ("Finished!")
+
+func enable_debug_view(enable:bool):
+    m_debug_property_view.set_prop_visible("current_ports", enable)
 
 func update_all_wfc_tiles():
     for i in range(m_tile_count_width):
@@ -287,7 +288,8 @@ func _on_dict_property_property_changed(property_name, property_value):
         "step_button":
             m_step = true
         "enable debug data":
-            m_debug_visualizer.set_visible(property_value)
+            print ("Eanble Debug: %s" % str(property_value))
+            enable_debug_view(property_value)
             #m_wfc_image_viewer.enable_shrink(property_value)
         "tile width count":
             m_tile_count_width = property_value
@@ -304,7 +306,6 @@ func start_wfc():
     m_wfc_image_viewer.set_texture_and_image_sizes(texture_nothing.get_size(), m_tile_count_width, m_tile_count_height)
     m_priority_tile_pos = Vector2i(randi_range(0, (m_tile_count_width - 1)), randi_range(0, (m_tile_count_height - 1)))
     m_wfc.initialize(m_tile_count_width, m_tile_count_height, 0, m_tile_dict, 0, ENABLE_EDGE, apply_soft_constraints)
-    m_debug_visualizer.clear()
     update_all_wfc_tiles()
     #m_wfc_image_viewer.highlight_neighbors(m_wfc.m_dbg_tile_neighbors)
     #m_wfc_image_viewer.highlight_box(m_wfc.m_dbg_tile_position)
