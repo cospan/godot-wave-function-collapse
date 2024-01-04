@@ -89,7 +89,12 @@ func update_dict(property_dict = {}):
                 add_child(prop)
                 m_widget_dict[key] = {"type": property_dict[key]["type"], "label": label, "widget": prop}
             "ItemList":
+                var scroll_box = ScrollContainer.new()
                 prop = ItemList.new()
+                scroll_box.add_child(prop)
+                if "size" in property_dict[key]:
+                    scroll_box.custom_minimum_size = property_dict[key]["size"]
+                    prop.custom_minimum_size = property_dict[key]["size"]
                 prop.auto_height = true
                 if "items" in property_dict[key]:
                     for item in property_dict[key]["items"]:
@@ -111,7 +116,8 @@ func update_dict(property_dict = {}):
                         elif item is Texture2D:
                             prop.add_item("", item)
 
-                add_child(prop)
+                #add_child(prop)
+                add_child(scroll_box)
                 m_widget_dict[key] = {"type": property_dict[key]["type"], "label": label, "widget": prop}
             _:
                 print ("Unknown Property: %s" % key["type"])
@@ -120,6 +126,8 @@ func update_dict(property_dict = {}):
         if property_dict[key].has("visible"):
             label.visible = property_dict[key]["visible"]
             if prop:
+                if prop.get_parent() is ScrollContainer:
+                    prop = prop.get_parent()
                 prop.visible = property_dict[key]["visible"]
 
 
@@ -134,10 +142,13 @@ func set_label(n, text):
 func set_prop_visible(n, enable:bool):
     if !m_widget_dict.has(n):
         print ("No such property: %s" % n)
-        return 
+        return
 
     m_widget_dict[n]["label"].visible = enable
-    m_widget_dict[n]["widget"].visible = enable
+    var prop = m_widget_dict[n]["widget"]
+    if prop.get_parent() is ScrollContainer:
+        prop = prop.get_parent()
+    prop.visible = enable
 
 func set_value(n, value):
     if !m_widget_dict.has(n):
@@ -172,6 +183,30 @@ func set_value(n, value):
             m_widget_dict[n]["widget"].selected = value
         "Label":
             m_widget_dict[n]["widget"].text = value
+        "ItemList":
+            m_widget_dict[n]["widget"].clear()
+            for item in value:
+                if item is Array:
+                    var sub_texture = Texture2D
+                    var sub_string = ""
+                    var sub_select = false
+                    for sub_item in item:
+                        if sub_item is String:
+                            sub_string = sub_item
+                        if sub_item is Image:
+                            sub_texture = ImageTexture.create_from_image(sub_item)
+                        if sub_item is Texture2D:
+                            sub_texture = sub_item
+                        if sub_item is bool:
+                            sub_select = sub_item
+
+                    m_widget_dict[n]["widget"].add_item(sub_string, sub_texture, sub_select)
+                elif item is String:
+                    m_widget_dict[n]["widget"].add_item(item)
+                elif item is Texture2D:
+                    m_widget_dict[n]["widget"].add_item("", item)
+
+
 
 func _property_update(property_name, property_value):
     property_changed.emit(property_name, property_value)

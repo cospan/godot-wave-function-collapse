@@ -10,7 +10,8 @@ extends Control
 @export var MAX_TILE_COUNT_HEIGHT = 20
 @export var ENABLE_EDGE = true
 
-@export var DEFAULT_ENABLE_STEP = true
+#@export var DEFAULT_ENABLE_STEP = true
+@export var DEFAULT_ENABLE_STEP = false
 
 
 @export var texture_empty = preload("res://assets/wfc_empty.png")
@@ -80,7 +81,7 @@ func _ready():
     m_debug_props["step_button"] = {"type": "Button", "name": "Step"}
     m_debug_props["enable debug data"] = {"type": "CheckBox", "value": false, "name": "Enable Debug Data"}
     m_debug_props["current_ports"] = {"type": "Label", "name":"Current Ports", "value":"XXXX", "visible": false}
-    m_debug_props["possible_tiles"] = {"type": "ItemList", "name":"Possible Tiles", "items":["test1", "test2"]}
+    m_debug_props["possible_tiles"] = {"type": "ItemList", "name":"Possible Tiles", "size": Vector2(100, 200), "visible": false}
     #m_debug_props["tile width count"] = {"type": "HSlider", "min": MIN_TILE_COUNT_WIDTH, "max": MAX_TILE_COUNT_WIDTH, "step": 1, "value": m_tile_count_width, "name": "Tile Width Count"}
     #m_debug_props["tile_width_count_view"] = {"type":"LineEdit", "value": str(m_tile_count_width), "name": "", "readonly": true}
     #m_debug_props["tile height count"] = {"type": "HSlider", "min": MIN_TILE_COUNT_WIDTH, "max": MAX_TILE_COUNT_HEIGHT, "step": 1, "value": m_tile_count_height, "name": "Tile Height Count"}
@@ -101,6 +102,14 @@ func _process(_delta):
             update_all_wfc_tiles()
             m_wfc_image_viewer.highlight_neighbors(m_wfc.m_dbg_tile_neighbors)
             m_wfc_image_viewer.highlight_box(m_wfc.m_dbg_tile_position)
+            m_debug_property_view.set_value("current_ports", str(m_wfc.m_dbg_tile_sockets))
+            # Create a list with both the strings and images
+            var possible_tiles = Array()
+            for tile in m_wfc.m_dbg_valid_tiles:
+                possible_tiles.append([tile, m_tile_dict[tile]["image"]])
+            print ("Possible Children: %s" % str(m_wfc.m_dbg_valid_tiles))
+            #m_debug_property_view.set_value("possible_tiles", m_wfc.m_dbg_valid_tiles)
+            m_debug_property_view.set_value("possible_tiles", possible_tiles)
     elif m_processing:
         m_processing = m_wfc.step(m_priority_tile_pos)
         m_priority_tile_pos = null
@@ -111,6 +120,7 @@ func _process(_delta):
 
 func enable_debug_view(enable:bool):
     m_debug_property_view.set_prop_visible("current_ports", enable)
+    m_debug_property_view.set_prop_visible("possible_tiles", enable)
 
 func update_all_wfc_tiles():
     for i in range(m_tile_count_width):
@@ -122,7 +132,6 @@ func update_all_wfc_tiles():
                 #print ("Updating Tile to new entropy: %s" % str([i, j, tile_name, view_entropy, model_entropy]))
                 # We should update
                 m_wfc_image_viewer.set_tile(i, j, m_tile_dict[tile_name]["image"], model_entropy)
-
 
 func apply_soft_constraints(tiles:Array):
     # We have a list of tiles, we need to apply the soft constraints to them
@@ -154,7 +163,6 @@ func apply_soft_constraints(tiles:Array):
     var collapsed_tile = tiles[weighted_random_select(weighted_tiles)]
     #print ("Tiles: %s" % str(tiles, weighted_tiles, collapsed_tile))
     #print ("Tile: %s" % str(collapsed_tile))
-
     return collapsed_tile
 
 func weighted_random_select(weights:Array) -> int:
@@ -171,7 +179,6 @@ func weighted_random_select(weights:Array) -> int:
         if rand < cumulative_sum[i]:
             return i
     return cumulative_sum.size() - 1
-
 
 func create_tile_dictionary() -> Dictionary:
     var tile_dict = Dictionary()
@@ -307,10 +314,21 @@ func start_wfc():
     m_priority_tile_pos = Vector2i(randi_range(0, (m_tile_count_width - 1)), randi_range(0, (m_tile_count_height - 1)))
     m_wfc.initialize(m_tile_count_width, m_tile_count_height, 0, m_tile_dict, 0, ENABLE_EDGE, apply_soft_constraints)
     update_all_wfc_tiles()
+    #m_wfc_image_viewer.set_size(m_wfc_image_viewer.m_texture_size)
+
     #m_wfc_image_viewer.highlight_neighbors(m_wfc.m_dbg_tile_neighbors)
     #m_wfc_image_viewer.highlight_box(m_wfc.m_dbg_tile_position)
+    call_deferred("update_hbox_size")
 
+func update_hbox_size():
+    #var hbox = $hbox
+    m_wfc_image_viewer.custom_minimum_size = m_wfc_image_viewer.m_texture_size
+    #m_wfc_image_viewer.set_size(m_wfc_image_viewer.m_texture_size)
 
 func _on_wfc_image_viewer_tile_selected(pos):
     m_priority_tile_pos = pos
     m_step = true
+
+func _on_gui_input(event):
+    if event is InputEventMouseButton:
+        print ("Game Input Mouse Event: %s" % str(event))

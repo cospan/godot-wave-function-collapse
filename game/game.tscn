@@ -31,23 +31,19 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="DictProperty" parent="hbox" instance=ExtResource("2_las2g")]
-custom_minimum_size = Vector2(300, 0)
+custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 1
 
 [node name="wfc_image_viewer" type="Control" parent="hbox"]
 layout_mode = 2
-size_flags_horizontal = 3
+size_flags_horizontal = 2
+size_flags_vertical = 0
 theme = SubResource("Theme_hldb1")
 script = ExtResource("3_7vixg")
 
-[node name="ItemList" type="ItemList" parent="hbox"]
-visible = false
-layout_mode = 2
-
 [node name="WFC" parent="." instance=ExtResource("2_frcnx")]
 
+[connection signal="gui_input" from="." to="." method="_on_gui_input"]
 [connection signal="property_changed" from="hbox/DictProperty" to="." method="_on_dict_property_property_changed"]
 [connection signal="gui_input" from="hbox/wfc_image_viewer" to="hbox/wfc_image_viewer" method="_on_gui_input"]
 [connection signal="tile_selected" from="hbox/wfc_image_viewer" to="." method="_on_wfc_image_viewer_tile_selected"]

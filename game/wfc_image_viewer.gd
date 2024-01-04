@@ -1,6 +1,7 @@
 extends Control
 
 var m_image_texture:ImageTexture = null
+var m_texture_size:Vector2i = Vector2i(-1, -1)
 var m_image:Image = null
 var m_entropy_2darray:Array
 var m_font
@@ -11,7 +12,7 @@ var m_tile_count:Vector2i
 var m_highlight_pos:Vector2i = Vector2i(-1, -1)
 var m_highlight_neighbor_positions:Array = []
 var m_original_size:Vector2 = Vector2(-1, -1)
-var m_scale:Vector2 = Vector2(-1, -1)
+var m_scale:Vector2 = Vector2(1,1)
 var m_shrink_scale:Vector2 = Vector2(-1, -1)
 var m_shrink_flag:bool = false
 
@@ -23,10 +24,9 @@ signal tile_selected(pos:Vector2i)
 func _ready():
     m_font = theme.default_font
     m_font_size = theme.default_font_size
-    pass
 
 func set_texture_and_image_sizes(tile_size:Vector2i, count_x:int, count_y:int) -> void:
-    var texture_size = Vector2i(tile_size.x * count_x, tile_size.y * count_y)
+    m_texture_size = Vector2i(tile_size.x * count_x, tile_size.y * count_y)
     m_tile_size = tile_size
     m_tile_count = Vector2i(count_x, count_y)
     m_entropy_2darray = []
@@ -37,14 +37,14 @@ func set_texture_and_image_sizes(tile_size:Vector2i, count_x:int, count_y:int) -
         for j in range(count_y):
             m_entropy_2darray[i][j] = -1
 
-    m_image = Image.create(texture_size.x, texture_size.y, false, Image.FORMAT_RGBA8)
+    m_image = Image.create(m_texture_size.x, m_texture_size.y, false, Image.FORMAT_RGBA8)
     m_image.fill(Color(0, 0, 0, 1))
     m_image_texture = ImageTexture.create_from_image(m_image)
-    set_size(texture_size)
+    set_size(m_texture_size)
     if m_original_size.x == -1:
-        m_original_size = texture_size
+        m_original_size = m_texture_size
     else:
-        m_scale = Vector2(float(m_original_size.x) / float(texture_size.x), float(m_original_size.y) / float(texture_size.y))
+        m_scale = Vector2(float(m_original_size.x) / float(m_texture_size.x), float(m_original_size.y) / float(m_texture_size.y))
         m_shrink_scale = Vector2(m_scale.x * SHRINK_SCALE, m_scale.y * SHRINK_SCALE)
         if m_shrink_flag:
             scale = m_shrink_scale
@@ -57,7 +57,6 @@ func enable_shrink(enable:bool):
         scale = m_shrink_scale
     else:
         scale = m_scale
-    
 
 func highlight_box(pos:Vector2i):
     m_highlight_pos = pos
@@ -110,23 +109,19 @@ func _draw():
             var pos = Vector2(m_highlight_pos.x * m_tile_size.x, m_highlight_pos.y * m_tile_size.y)
             draw_rect(Rect2(pos, Vector2(m_tile_size.x, m_tile_size.y)), Color(1, 0, 0, 0.5))
 
-        #get_global_rect()
-
-
 func _on_gui_input(event:InputEvent):
     var pos = Vector2i(-1, -1)
-    #print ("HI!")
     if event is InputEventMouseButton:
         #print ("Mouse Event")
         if event.button_index == 1 && event.pressed == true:
-          pos.x = (event.position.x / m_tile_size.x) * m_scale.x
-          pos.y = (event.position.y / m_tile_size.y) * m_scale.y
-          print ("pos: ", pos)
-          emit_signal("tile_selected", pos)
+            print ("Global Position: %s" % str(event.global_position))
+            print ("Event Position: %s" % str(event.position))
+            print ("Tile Size: %s" % str(m_tile_size))
+
+            pos.x = (event.position.x / m_tile_size.x) * m_scale.x
+            pos.y = (event.position.y / m_tile_size.y) * m_scale.y
+            print ("pos: ", pos)
+            emit_signal("tile_selected", pos)
 
         print ("Global Rects: %s" % str(get_global_rect()))
         #print ("Full Screen Size: %s" % str(get_))
-
-
-
-

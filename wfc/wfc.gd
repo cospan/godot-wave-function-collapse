@@ -14,7 +14,7 @@ const WILD_TILE:int = 0
 var m_dbg_tile_sockets:Array = Array()
 var m_dbg_tile_position:Vector2i = Vector2i(-1, -1)
 var m_dbg_tile_neighbors:Array = Array()
-var m_dbg_hard_constraints:Array = Array()
+var m_dbg_valid_tiles:Array = Array()
 
 signal soft_constraint
 
@@ -79,7 +79,7 @@ func step(priority_tile = null) -> bool:
         m_dbg_tile_position = tile_pos
         m_dbg_tile_neighbors = adjacent_tile_positions
         m_dbg_tile_sockets = adjacent_tile_sockets
-        m_dbg_hard_constraints = valid_tiles
+        m_dbg_valid_tiles = valid_tiles.duplicate()
 
         if tile_pos is Vector2i:
             m_tile_map[tile_pos.x][tile_pos.y] = {"type": collapsed_tile_name, "entropy": 1}
